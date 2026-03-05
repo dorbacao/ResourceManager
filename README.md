@@ -1,45 +1,65 @@
-✨ Objetivo
-Este projeto mostra:
+# File Transaction Resource Manager
 
-Como criar um ResourceManager customizado implementando IEnlistmentNotification.
+Um exemplo simples e funcional de como implementar um **Resource Manager** customizado para participar em **transações distribuídas** (`System.Transactions`) aplicadas a operações de escrita em ficheiros. O objetivo é tornar operações de I/O em disco **transacionais**, garantindo que ficheiros criados durante uma transação são automaticamente removidos em caso de rollback.
 
-Como associar automaticamente operações de escrita a uma transação ativa.
+## 🎯 Objetivo
 
-Como garantir que ficheiros criados são removidos se a transação falhar.
+Este projeto demonstra:
 
-Como usar TransactionScope para coordenar operações de I/O de forma segura.
+- **Resource manager customizado:** implementação de `IEnlistmentNotification`.
+- **Integração com transações:** associação automática das escritas à transação ativa.
+- **Rollback de ficheiros:** remoção de ficheiros criados se a transação falhar.
+- **Uso de `TransactionScope`:** coordenação de operações de I/O de forma segura e consistente.
 
-📦 Estrutura do Projeto
-FileTransactionManager  
-Gere instâncias de TransactionFileResourceManager associadas à transação atual.
-Usa ConditionalWeakTable para garantir que cada transação tem o seu próprio resource manager.
+## 🧱 Estrutura do Projeto
 
-TransactionFileResourceManager  
-Implementa IEnlistmentNotification e participa no ciclo de vida da transação:
+### `FileTransactionManager`
 
-Prepare → nada a validar
+- Gere instâncias de `TransactionFileResourceManager` associadas à transação atual.
+- Usa `ConditionalWeakTable<Transaction, TransactionFileResourceManager>` para garantir um resource manager por transação.
+- Inscreve automaticamente o resource manager na transação via `EnlistVolatile`.
+- Remove o resource manager quando a transação termina (`TransactionCompleted`).
 
-Commit → mantém os ficheiros
+### `TransactionFileResourceManager`
 
-Rollback → apaga todos os ficheiros criados durante a transação
+- Implementa `IEnlistmentNotification` para participar no ciclo de vida da transação.
+- Mantém uma `ConcurrentQueue<string>` com os caminhos dos ficheiros criados.
+- Comportamento:
+  - `Prepare` → validação simples.
+  - `Commit` → mantém os ficheiros.
+  - `Rollback` → apaga todos os ficheiros registados.
 
-TransactionFile  
-Wrapper simples para File.WriteAllText, que além de escrever o ficheiro, regista-o no resource manager da transação.
+### `TransactionFile`
 
-Program.cs  
-Exemplo de utilização com TransactionScope.
+- Wrapper para `File.WriteAllText`.
+- Após escrever o ficheiro, regista-o no resource manager da transação ativa.
 
-🧠 Como Funciona
-Quando TransactionFile.WriteAllText é chamado:
+### `Program.cs`
 
-O ficheiro é criado imediatamente.
+Demonstra o uso de `TransactionScope` para criar ficheiros de forma transacional.
 
-O caminho é registado no resource manager da transação atual.
+## ⚙️ Como Funciona
 
-O TransactionFileResourceManager é automaticamente inscrito na transação através de EnlistVolatile.
+1. `TransactionFile.WriteAllText` cria o ficheiro e regista o caminho no resource manager.
+2. O `FileTransactionManager` inscreve automaticamente o resource manager na transação ativa.
+3. Quando a transação termina:
+   - **Commit** → ficheiros permanecem.
+   - **Rollback** → ficheiros registados são apagados.
 
-Quando a transação termina:
+Assim, operações de escrita em disco passam a participar numa transação distribuída, garantindo **atomicidade**.
 
-Commit → nada é removido
+## 🧪 Exemplo de Uso
 
-Rollback → todos os ficheiros registados são apagados
+```csharp
+using System.Transactions;
+
+using (var transaction = new TransactionScope())
+{
+    var path = "C:\\temporary";
+    Directory.CreateDirectory(path);
+
+    TransactionFile.WriteAllText($"{path}\\file1.txt", "Hello, World 1!");
+    TransactionFile.WriteAllText($"{path}\\file2.txt", "Hello, World 2!");
+
+    transaction.Complete();
+}
