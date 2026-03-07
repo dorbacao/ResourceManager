@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Transactions;
 
-namespace ResourceManagerSample
+namespace ResourceManagerSample.ResourceManagers
 {
     public class TransactionFileResourceManager : IEnlistmentNotification
     {
@@ -25,15 +25,15 @@ namespace ResourceManagerSample
         {
             while (files.Any())
             {
-                if(files.TryDequeue(out var path))
+                if (files.TryDequeue(out var path))
                 {
                     if (File.Exists(path))
                     {
                         File.Delete(path);
-                    }                    
+                    }
                 }
             }
-            
+
             enlistment.Done();
         }
 

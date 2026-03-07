@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Transactions;
+using ResourceManagerSample.ResourceManagers;
 
 namespace ResourceManagerSample
 {
