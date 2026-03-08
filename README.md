@@ -1,4 +1,4 @@
-# File Transaction Resource Manager
+# Custons Resource Manager
 
 Um exemplo simples e funcional de como implementar um **Resource Manager** customizado para participar em **transações distribuídas** (`System.Transactions`) aplicadas a operações de escrita em ficheiros. O objetivo é tornar operações de I/O em disco **transacionais**, garantindo que ficheiros criados durante uma transação são automaticamente removidos em caso de rollback.
 
